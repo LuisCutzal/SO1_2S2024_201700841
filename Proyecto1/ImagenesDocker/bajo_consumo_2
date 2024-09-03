@@ -1,0 +1,6 @@
+# Dockerfile para otro contenedor de bajo consumo de recursos
+FROM ubuntu:latest
+
+# Comando para bajo consumo indefinido
+CMD ["sh", "-c", "echo 'Running lightweight process' && while :; do sleep 60; done"]
+

@@ -1,0 +1,6 @@
+# Dockerfile para bajo consumo de CPU y RAM
+FROM ubuntu:latest
+
+# Comando para bajo consumo indefinido
+CMD ["sh", "-c", "while :; do sleep 60; done"]
+
