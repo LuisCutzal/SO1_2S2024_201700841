@@ -22,17 +22,18 @@ MODULE_AUTHOR("Luis Cutzal");
 MODULE_DESCRIPTION("Modulo para leer informacion de memoria y CPU en JSON");
 MODULE_VERSION("1.0");
 
-#define PROC_NAME "sysinfo"
+#define PROC_NAME "sysinfo_201700841"
 #define MAX_CMDLINE_LENGTH 256
 #define CONTAINER_ID_LENGTH 64
 #define MAX_CONTAINER_NAME_LENGTH 64
 
 static void extract_container_info(char *cmdline, char *container_id) {
     char *id_ptr = strstr(cmdline, "-id ");
-    
+    int len;  // Mover la declaración aquí
+
     if (id_ptr) {
         id_ptr += 4;  // Mover el puntero después de "-id "
-        int len = strlen(id_ptr);
+        len = strlen(id_ptr);
 
         if (len > 10) {
             // Copiar los últimos 10 caracteres del ID
