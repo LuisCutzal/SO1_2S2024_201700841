@@ -28,26 +28,19 @@ MODULE_VERSION("1.0");
 #define MAX_CONTAINER_NAME_LENGTH 64
 
 static void extract_container_info(char *cmdline, char *container_id) {
-    char *id_ptr = strstr(cmdline, "-id ");
-    int len;  // Mover la declaración aquí
-
+    char *id_ptr = strstr(cmdline, "-id");
     if (id_ptr) {
-        id_ptr += 4;  // Mover el puntero después de "-id "
-        len = strlen(id_ptr);
-
-        if (len > 10) {
-            // Copiar los últimos 10 caracteres del ID
-            strncpy(container_id, id_ptr + len - 10, 10);
-            container_id[10] = '\0';
-        } else {
-            // Copiar el ID completo si tiene menos de 10 caracteres
-            strncpy(container_id, id_ptr, len);
-            container_id[len] = '\0';
+        id_ptr += 3;  // Avanza después de "-id"
+        while (*id_ptr == ' ' || *id_ptr == '=') {
+            id_ptr++;  // Salta espacios o "=" si está presente
         }
+        strncpy(container_id, id_ptr, 64);  // Copia hasta 64 caracteres
+        container_id[64] = '\0';  // Asegura que esté terminada la cadena
     } else {
         strcpy(container_id, "N/A");
     }
 }
+
 
 static char *get_process_cmdline(struct task_struct *task) {
     struct mm_struct *mm;
@@ -132,6 +125,7 @@ static int sysinfo_show(struct seq_file *m, void *v) {
             cmdline = get_process_cmdline(task);
 
             if (cmdline) {
+                printk(KERN_INFO "Línea de comando completa para PID %d: %s\n", task->pid, cmdline);
                 extract_container_info(cmdline, container_id);
                 kfree(cmdline);
             }
