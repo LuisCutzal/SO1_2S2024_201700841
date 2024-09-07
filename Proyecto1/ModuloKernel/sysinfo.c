@@ -138,8 +138,8 @@ static int sysinfo_show(struct seq_file *m, void *v) {
 
             seq_printf(m, "  {\n");
             seq_printf(m, "    \"PID\": %d,\n", task->pid);
-            seq_printf(m, "    \"NOMBRE\": \"%s\",\n", task->comm);
-            seq_printf(m, "    \"ContainerID\": \"%s\",\n", container_id);
+            seq_printf(m, "    \"Nombre\": \"%s\",\n", task->comm);
+            seq_printf(m, "    \"ContenedorID\": \"%s\",\n", container_id);
             seq_printf(m, "    \"VSZ_KB\": %lu,\n", vsz);
             seq_printf(m, "    \"RSS_KB\": %lu,\n", rss);
             seq_printf(m, "    \"PorcentajeMemoria\": %lu.%02lu,\n", mem_usage / 100, mem_usage % 100);

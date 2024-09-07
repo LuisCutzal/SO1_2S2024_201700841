@@ -1,1 +1,1 @@
-/home/luis/Escritorio/sopes1/lab/proyecto/servicio/target/debug/servicio: /home/luis/Escritorio/sopes1/lab/proyecto/servicio/src/main.rs
+/home/luis/Escritorio/sopes1/lab/SO1_2S2024_201700841/Proyecto1/Rust/target/debug/servicio: /home/luis/Escritorio/sopes1/lab/SO1_2S2024_201700841/Proyecto1/Rust/src/main.rs

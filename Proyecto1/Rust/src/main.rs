@@ -16,12 +16,14 @@ use std::io::prelude::*;  // Para leer la salida del comando
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SystemInfo {
-    #[serde(rename = "Processes")]
-    processes: Vec<Process>}
-
-
-
-    
+    #[serde(rename = "MemoriaTotalKB")]
+    memoria_total_kb: u64,
+    #[serde(rename = "MemoriaLibreKB")]
+    memoria_libre_kb: u64,
+    #[serde(rename = "MemoriaUsadaKB")]
+    memoria_usada_kb: u64,
+    #[serde(rename = "Procesos")]
+    processes: Vec<Process>
 }
 
 /* 
@@ -42,13 +44,17 @@ struct SystemInfo {
 struct Process {
     #[serde(rename = "PID")]
     pid: u32,
-    #[serde(rename = "Name")]
+    #[serde(rename = "Nombre")]
     name: String,
-    #[serde(rename = "Cmdline")]
+    #[serde(rename = "ContenedorID")]
     cmd_line: String,
-    #[serde(rename = "MemoryUsage")]
+    #[serde(rename = "VSZ_KB")]
+    vsz_kb: u64,
+    #[serde(rename = "RSS_KB")]
+    rss_kb: u64,
+    #[serde(rename = "PorcentajeMemoria")]
     memory_usage: f64,
-    #[serde(rename = "CPUUsage")]
+    #[serde(rename = "PorcentajeCPU")]
     cpu_usage: f64,
 }
 
@@ -57,6 +63,8 @@ struct LogProcess {
     pid: u32,
     container_id: String,
     name: String,
+    vsz_k: u64,
+    rss_kb: u64,
     memory_usage: f64,
     cpu_usage: f64,
 }
@@ -215,14 +223,28 @@ fn analyzer( system_info:  SystemInfo) {
     // Hacemos un print de los contenedores de bajo consumo en las listas.
     println!("Bajo consumo");
     for process in lowest_list {
-        println!("PID: {}, Name: {}, container ID: {}, Memory Usage: {}, CPU Usage: {}", process.pid, process.name, process.get_container_id(), process.memory_usage, process.cpu_usage);
+        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {} ,Memory Usage: {}, CPU Usage: {}", 
+        process.pid, 
+        process.name, 
+        process.get_container_id(), 
+        process.vsz_kb,
+        process.rss_kb,
+        process.memory_usage, 
+        process.cpu_usage);
     }
 
     println!("------------------------------");
 
     println!("Alto consumo");
     for process in highest_list {
-        println!("PID: {}, Name: {}, Icontainer ID {}, Memory Usage: {}, CPU Usage: {}", process.pid, process.name,process.get_container_id(),process.memory_usage, process.cpu_usage);
+        println!("PID: {}, Nombre: {}, ContenedorID: ID {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}", 
+        process.pid, 
+        process.name,
+        process.get_container_id(),
+        process.vsz_kb,
+        process.rss_kb,
+        process.memory_usage, 
+        process.cpu_usage);
     }
 
     println!("------------------------------");
@@ -243,6 +265,8 @@ fn analyzer( system_info:  SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
+                vsz_k: process.rss_kb,
+                rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage,
             };
@@ -270,6 +294,8 @@ fn analyzer( system_info:  SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
+                vsz_k: process.rss_kb,
+                rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage
             };
@@ -287,7 +313,14 @@ fn analyzer( system_info:  SystemInfo) {
     // Hacemos un print de los contenedores que matamos.
     println!("Contenedores matados");
     for process in log_proc_list {
-        println!("PID: {}, Name: {}, Container ID: {}, Memory Usage: {}, CPU Usage: {} ", process.pid, process.name, process.container_id,  process.memory_usage, process.cpu_usage);
+        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {} ",
+        process.pid,
+        process.name,
+        process.container_id,
+        process.vsz_k,
+        process.rss_kb,
+        process.memory_usage,
+        process.cpu_usage);
     }
 
     println!("------------------------------");
@@ -344,7 +377,7 @@ fn main() {
     // TODO: Utilizar algo para capturar la señal de terminación y matar el contenedor registro y cronjob.
 
     let output = Command::new("cat")
-        .arg("/proc/sysinfo")
+        .arg("/proc/sysinfo_201700841")
         .output()
         .expect("Failed to execute command");
 
