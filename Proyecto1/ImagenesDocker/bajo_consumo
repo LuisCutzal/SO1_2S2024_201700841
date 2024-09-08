@@ -1,6 +1,5 @@
-# Dockerfile para bajo consumo de CPU y RAM
-FROM ubuntu:latest
+# Dockerfile para consumo moderado de CPU y RAM usando BusyBox
+FROM busybox:latest
 
-# Comando para bajo consumo indefinido
-CMD ["sh", "-c", "while :; do sleep 60; done"]
-
+# Ejecutar un proceso de carga ligera en un bucle infinito
+CMD ["sh", "-c", "while true; do { cat /dev/urandom | head -c 1M > /dev/null; } 2>/dev/null; sleep 10; done"]

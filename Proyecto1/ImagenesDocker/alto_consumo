@@ -1,7 +1,8 @@
-# Dockerfile para alto consumo de CPU y RAM
-FROM ubuntu:latest
+# Dockerfile para bajo consumo de CPU y RAM usando Alpine
+FROM alpine:latest
 
-RUN apt-get update && apt-get install -y stress
+# Instalar el paquete 'stress-ng' en Alpine
+RUN apk add --no-cache stress-ng
 
-# Comando para consumir CPU y RAM indefinidamente
-CMD ["stress", "--cpu", "4", "--vm", "1", "--vm-bytes", "512M", "--vm-hang", "0"]
+# Comando para consumir menos CPU y RAM en un bucle infinito
+CMD ["sh", "-c", "while true; do stress-ng --cpu 1 --vm 1 --vm-bytes 128M > /dev/null 2>&1; sleep 5; done"]

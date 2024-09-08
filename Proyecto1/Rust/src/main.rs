@@ -79,16 +79,17 @@ fn sort_processes(processes: &mut Vec<Process>) {
 }
 
 fn kill_container(id: &str) -> std::process::Output {
-    let output = Command::new("sudo")
+    let remove_output = Command::new("sudo")
         .arg("docker")
-        .arg("stop")
+        .arg("rm")
+        .arg("-f")
         .arg(id)
         .output()
-        .expect("failed to execute process");
+        .expect("failed to remove container");
 
-    println!("Matando contenedor con id: {}", id);
+    //println!("Contenedor eliminado con id: {}", id);
 
-    output
+    remove_output
 }
 
 fn remove_cronjob() {
@@ -140,8 +141,10 @@ fn analyzer(system_info: &SystemInfo) {
 
     println!("------------------------------");
 
+    // Eliminar contenedores de bajo consumo hasta tener solo 3
     if lowest_list.len() > 3 {
-        for process in lowest_list.iter().skip(3) {
+        let excess_lowest = lowest_list.len() - 3;
+        for process in lowest_list.iter().take(excess_lowest) {
             let log_process = LogProcess {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
@@ -155,10 +158,12 @@ fn analyzer(system_info: &SystemInfo) {
             log_proc_list.push(log_process.clone());
             let _output = kill_container(&process.get_container_id());
         }
-    } 
+    }
 
+    // Eliminar contenedores de alto consumo hasta tener solo 2
     if highest_list.len() > 2 {
-        for process in highest_list.iter().take(highest_list.len() - 2) {
+        let excess_highest = highest_list.len() - 2;
+        for process in highest_list.iter().take(excess_highest) {
             let log_process = LogProcess {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
@@ -189,6 +194,7 @@ fn analyzer(system_info: &SystemInfo) {
     println!("------------------------------");
 }
 
+
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
     let system_info: SystemInfo = serde_json::from_str(json_str)?;
     Ok(system_info)
@@ -205,36 +211,38 @@ fn main() {
         stop_clone.store(true, Ordering::SeqCst);
     }).expect("Error setting Ctrl+C handler");
 
-    let output = Command::new("cat")
-        .arg("/proc/sysinfo_201700841")
-        .output()
-        .expect("Failed to execute command");
+    while !stop.load(Ordering::SeqCst) {
+        // Leer el archivo /proc/sysinfo_201700841 dentro del bucle para obtener datos actualizados
+        let output = Command::new("cat")
+            .arg("/proc/sysinfo_201700841")
+            .output()
+            .expect("Failed to execute command");
 
-    if !output.status.success() {
-        eprintln!("Error executing command: {:?}", output.status);
-        return;
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Parse the system info once
-    let system_info: Result<SystemInfo, serde_json::Error> = parse_proc_to_struct(&stdout);
-    let system_info = match system_info {
-        Ok(info) => info,
-        Err(e) => {
-            eprintln!("Error parsing system info: {:?}", e);
+        if !output.status.success() {
+            eprintln!("Error executing command: {:?}", output.status);
             return;
         }
-    };
 
-    // Print system information once
-    println!("Información del sistema:");
-    println!("Memoria Total (KB): {}", system_info.memoria_total_kb);
-    println!("Memoria Libre (KB): {}", system_info.memoria_libre_kb);
-    println!("Memoria Usada (KB): {}", system_info.memoria_usada_kb);
-    println!("------------------------------");
+        let stdout = String::from_utf8_lossy(&output.stdout);
 
-    while !stop.load(Ordering::SeqCst) {
+        // Parse the system info dentro del bucle para obtener la información más reciente
+        let system_info: Result<SystemInfo, serde_json::Error> = parse_proc_to_struct(&stdout);
+        let system_info = match system_info {
+            Ok(info) => info,
+            Err(e) => {
+                eprintln!("Error parsing system info: {:?}", e);
+                return;
+            }
+        };
+
+        // Print system information
+        println!("Información del sistema:");
+        println!("Memoria Total (KB): {}", system_info.memoria_total_kb);
+        println!("Memoria Libre (KB): {}", system_info.memoria_libre_kb);
+        println!("Memoria Usada (KB): {}", system_info.memoria_usada_kb);
+        println!("------------------------------");
+
+        // Ejecutar el análisis en los datos más recientes
         analyzer(&system_info);
 
         // Sleep to avoid excessive CPU usage in the loop
