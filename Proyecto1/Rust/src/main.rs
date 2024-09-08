@@ -163,7 +163,6 @@ fn analyzer(system_info: &SystemInfo) {
     let mut processes_list: Vec<Process> = system_info.processes.clone();
     sort_processes(&mut processes_list);
 
-
     // Imprimimos todos los contenedores (ya ordenados)
     println!("--- Lista completa de contenedores (ordenada) ---");
     for process in &processes_list {
@@ -181,12 +180,19 @@ fn analyzer(system_info: &SystemInfo) {
 
     println!("------------------------------");
 
-    // Ahora seleccionamos los 2 contenedores de mayor consumo y los 3 de menor consumo
+    // Verificar si hay suficientes procesos para procesar
+    let num_processes = processes_list.len();
+    if num_processes < 5 {
+        println!("No hay suficientes contenedores para aplicar análisis de alto/bajo consumo.");
+        return; // Salimos de la función si no hay suficientes procesos
+    }
+
+    // Seleccionar los 2 contenedores de mayor consumo y los 3 de menor consumo
     let high_consumption = &processes_list[..2]; // Primeros 2 contenedores
-    let low_consumption = &processes_list[processes_list.len() - 3..]; // Últimos 3 contenedores
+    let low_consumption = &processes_list[num_processes - 3..]; // Últimos 3 contenedores
 
     // Eliminamos todos los demás contenedores que no están ni en high_consumption ni en low_consumption
-    let to_kill = &processes_list[2..processes_list.len() - 3]; // Todos los demás contenedores
+    let to_kill = &processes_list[2..num_processes - 3]; // Todos los demás contenedores
 
     // Imprimimos los 3 contenedores de menor consumo
     println!("--- Contenedores de bajo consumo ---");
@@ -223,7 +229,6 @@ fn analyzer(system_info: &SystemInfo) {
     println!("------------------------------");
 
     // Eliminamos los contenedores de consumo medio y los agregamos a log_proc_list
-    //println!("--- Eliminando contenedores de consumo medio ---");
     for process in to_kill {
         let log_process = LogProcess {
             pid: process.pid,
@@ -261,8 +266,6 @@ fn analyzer(system_info: &SystemInfo) {
     
     println!("------------------------------");
 }
-
-
 
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
     let system_info: SystemInfo = serde_json::from_str(json_str)?;
