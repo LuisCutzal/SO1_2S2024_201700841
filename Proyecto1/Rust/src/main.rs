@@ -156,93 +156,112 @@ fn remove_specific_cronjob(script_path: &str) {
 
 
 fn analyzer(system_info: &SystemInfo) {
+    // Lista para almacenar los procesos eliminados
     let mut log_proc_list: Vec<LogProcess> = Vec::new();
+    
+    // Copiamos y ordenamos la lista de procesos según el criterio existente
     let mut processes_list: Vec<Process> = system_info.processes.clone();
-
     sort_processes(&mut processes_list);
 
-    let (lowest_list, highest_list) = processes_list.split_at(processes_list.len() / 2);
 
-    println!("Bajo consumo");
-    for process in lowest_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}", 
-        process.pid, 
-        process.name, 
-        process.get_container_id(), 
-        process.vsz_kb,
-        process.rss_kb,
-        process.memory_usage, 
-        process.cpu_usage);
+    // Imprimimos todos los contenedores (ya ordenados)
+    println!("--- Lista completa de contenedores (ordenada) ---");
+    for process in &processes_list {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
     }
 
     println!("------------------------------");
 
-    println!("Alto consumo");
-    for process in highest_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}", 
-        process.pid, 
-        process.name,
-        process.get_container_id(),
-        process.vsz_kb,
-        process.rss_kb,
-        process.memory_usage, 
-        process.cpu_usage);
+    // Ahora seleccionamos los 2 contenedores de mayor consumo y los 3 de menor consumo
+    let high_consumption = &processes_list[..2]; // Primeros 2 contenedores
+    let low_consumption = &processes_list[processes_list.len() - 3..]; // Últimos 3 contenedores
+
+    // Eliminamos todos los demás contenedores que no están ni en high_consumption ni en low_consumption
+    let to_kill = &processes_list[2..processes_list.len() - 3]; // Todos los demás contenedores
+
+    // Imprimimos los 3 contenedores de menor consumo
+    println!("--- Contenedores de bajo consumo ---");
+    for process in low_consumption {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
     }
 
     println!("------------------------------");
 
-    // Eliminar contenedores de bajo consumo hasta tener solo 3
-    if lowest_list.len() > 3 {
-        let excess_lowest = lowest_list.len() - 3;
-        for process in lowest_list.iter().take(excess_lowest) {
-            let log_process = LogProcess {
-                pid: process.pid,
-                container_id: process.get_container_id().to_string(),
-                name: process.name.clone(),
-                vsz_k: process.vsz_kb,
-                rss_kb: process.rss_kb,
-                memory_usage: process.memory_usage,
-                cpu_usage: process.cpu_usage,
-            };
-
-            log_proc_list.push(log_process.clone());
-            let _output = kill_container(&process.get_container_id());
-        }
+    // Imprimimos los 2 contenedores de mayor consumo
+    println!("--- Contenedores de alto consumo ---");
+    for process in high_consumption {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
     }
 
-    // Eliminar contenedores de alto consumo hasta tener solo 2
-    if highest_list.len() > 2 {
-        let excess_highest = highest_list.len() - 2;
-        for process in highest_list.iter().take(excess_highest) {
-            let log_process = LogProcess {
-                pid: process.pid,
-                container_id: process.get_container_id().to_string(),
-                name: process.name.clone(),
-                vsz_k: process.vsz_kb,
-                rss_kb: process.rss_kb,
-                memory_usage: process.memory_usage,
-                cpu_usage: process.cpu_usage
-            };
+    println!("------------------------------");
 
-            log_proc_list.push(log_process.clone());
-            let _output = kill_container(&process.get_container_id());
-        }
+    // Eliminamos los contenedores de consumo medio y los agregamos a log_proc_list
+    //println!("--- Eliminando contenedores de consumo medio ---");
+    for process in to_kill {
+        let log_process = LogProcess {
+            pid: process.pid,
+            container_id: process.get_container_id().to_string(),
+            name: process.name.clone(),
+            vsz_k: process.vsz_kb,
+            rss_kb: process.rss_kb,
+            memory_usage: process.memory_usage,
+            cpu_usage: process.cpu_usage,
+        };
+
+        // Guardamos el proceso en la lista log_proc_list
+        log_proc_list.push(log_process.clone());
+
+        // Simulamos el proceso de eliminación del contenedor
+        let _output = kill_container(&process.get_container_id());
     }
 
-    println!("Contenedores matados");
-    for process in log_proc_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {} ",
-        process.pid,
-        process.name,
-        process.container_id,
-        process.vsz_k,
-        process.rss_kb,
-        process.memory_usage,
-        process.cpu_usage);
-    }
+    println!("------------------------------");
 
+    // Imprimimos los contenedores que fueron eliminados
+    println!("--- Contenedores eliminados ---");
+    for log_process in log_proc_list {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            log_process.pid,
+            log_process.name,
+            log_process.container_id,
+            log_process.vsz_k,
+            log_process.rss_kb,
+            log_process.memory_usage,
+            log_process.cpu_usage
+        );
+    }
+    
     println!("------------------------------");
 }
+
 
 
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
