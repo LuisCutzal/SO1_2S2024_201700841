@@ -4,5 +4,4 @@ FROM ubuntu:latest
 RUN apt-get update && apt-get install -y stress
 
 # Comando para consumir CPU y RAM indefinidamente
-CMD ["stress", "--cpu", "4", "--vm", "1", "--vm-bytes", "512M", "--vm-hang", "0", "--timeout", "0"]
-
+CMD ["stress", "--cpu", "4", "--vm", "1", "--vm-bytes", "512M", "--vm-hang", "0"]

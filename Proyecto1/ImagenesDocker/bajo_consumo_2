@@ -2,5 +2,4 @@
 FROM ubuntu:latest
 
 # Comando para bajo consumo indefinido
-CMD ["sh", "-c", "echo 'Running lightweight process' && while :; do sleep 60; done"]
-
+CMD ["sh", "-c", "echo 'Running lightweight process' && while true; do sleep 60; done"]
