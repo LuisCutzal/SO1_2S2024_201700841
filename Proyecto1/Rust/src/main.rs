@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
+use ctrlc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SystemInfo {
@@ -88,6 +91,19 @@ fn kill_container(id: &str) -> std::process::Output {
     output
 }
 
+fn remove_cronjob() {
+    let output = Command::new("crontab")
+        .arg("-r")
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        eprintln!("Error al eliminar el cronjob: {:?}", output.status);
+    } else {
+        println!("Cronjob eliminado exitosamente.");
+    }
+}
+
 fn analyzer(system_info: &SystemInfo) {
     let mut log_proc_list: Vec<LogProcess> = Vec::new();
     let mut processes_list: Vec<Process> = system_info.processes.clone();
@@ -173,13 +189,22 @@ fn analyzer(system_info: &SystemInfo) {
     println!("------------------------------");
 }
 
-
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
     let system_info: SystemInfo = serde_json::from_str(json_str)?;
     Ok(system_info)
 }
 
 fn main() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_clone = stop.clone();
+
+    // Handle Ctrl+C
+    ctrlc::set_handler(move || {
+        println!("Ctrl+C received, removing cronjob...");
+        remove_cronjob();
+        stop_clone.store(true, Ordering::SeqCst);
+    }).expect("Error setting Ctrl+C handler");
+
     let output = Command::new("cat")
         .arg("/proc/sysinfo_201700841")
         .output()
@@ -209,7 +234,7 @@ fn main() {
     println!("Memoria Usada (KB): {}", system_info.memoria_usada_kb);
     println!("------------------------------");
 
-    loop {
+    while !stop.load(Ordering::SeqCst) {
         analyzer(&system_info);
 
         // Sleep to avoid excessive CPU usage in the loop
