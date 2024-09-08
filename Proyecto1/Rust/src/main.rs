@@ -75,35 +75,85 @@ impl PartialOrd for Process {
 }
 
 fn sort_processes(processes: &mut Vec<Process>) {
+    // Ordenar procesos por cpu_usage, memory_usage, rss_kb, y vsz_kb
     processes.sort();
+    //println!("Procesos ordenados (debug):");
+    // for process in processes {
+    //     println!("PID: {}, CPU Usage: {}, Memory Usage: {}, RSS: {}, VSZ: {}",
+    //         process.pid, process.cpu_usage, process.memory_usage, process.rss_kb, process.vsz_kb);
+    // }
 }
 
-fn kill_container(id: &str) -> std::process::Output {
-    let remove_output = Command::new("sudo")
+fn kill_container(contenedor_id: &str) {
+    let output = Command::new("sudo")
         .arg("docker")
-        .arg("rm")
-        .arg("-f")
-        .arg(id)
+        .arg("stop")
+        //.arg("-f")
+        .arg(contenedor_id)
         .output()
-        .expect("failed to remove container");
+        .expect("Error al ejecutar el comando docker");
 
-    //println!("Contenedor eliminado con id: {}", id);
-
-    remove_output
-}
-
-fn remove_cronjob() {
-    let output = Command::new("crontab")
-        .arg("-r")
-        .output()
-        .expect("failed to execute process");
-
-    if !output.status.success() {
-        eprintln!("Error al eliminar el cronjob: {:?}", output.status);
+    if output.status.success() {
+        println!("Contenedor eliminado exitosamente: {}", contenedor_id);
     } else {
-        println!("Cronjob eliminado exitosamente.");
+        eprintln!(
+            "Error al eliminar el contenedor {}: {}",
+            contenedor_id,
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
+
+fn remove_specific_cronjob(script_path: &str) {
+    // Obtener la lista actual de cronjobs
+    let output = Command::new("crontab")
+        .arg("-l")
+        .output()
+        .expect("Failed to list cronjobs");
+
+    if !output.status.success() {
+        eprintln!("Error al listar cronjobs: {:?}", output.status);
+        return;
+    }
+
+    // Convertir la salida a string
+    let cronjobs = String::from_utf8_lossy(&output.stdout);
+
+    // Filtrar los cronjobs que no coincidan con el script_path
+    let filtered_cronjobs: Vec<&str> = cronjobs
+        .lines()
+        .filter(|line| !line.contains(script_path))
+        .collect();
+
+    // Verificar si había un cronjob asociado al script
+    if filtered_cronjobs.len() == cronjobs.lines().count() {
+        println!("No se encontró ningún cronjob relacionado con {}", script_path);
+        return;
+    }
+
+    // Escribir los cronjobs filtrados de vuelta al crontab
+    let new_cronjobs = filtered_cronjobs.join("\n");
+    let mut apply_cron = Command::new("crontab")
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to update cronjobs");
+
+    if let Some(ref mut stdin) = apply_cron.stdin {
+        use std::io::Write;
+        stdin
+            .write_all(new_cronjobs.as_bytes())
+            .expect("Failed to write to cron stdin");
+    }
+
+    let status = apply_cron.wait().expect("Failed to wait on cronjob process");
+    if status.success() {
+        println!("Cronjob relacionado con {} eliminado exitosamente.", script_path);
+    } else {
+        eprintln!("Error al eliminar el cronjob: {:?}", status);
+    }
+}
+
 
 fn analyzer(system_info: &SystemInfo) {
     let mut log_proc_list: Vec<LogProcess> = Vec::new();
@@ -204,12 +254,13 @@ fn main() {
     let stop = Arc::new(AtomicBool::new(false));
     let stop_clone = stop.clone();
 
-    // Handle Ctrl+C
+    // Manejador para Ctrl+C
     ctrlc::set_handler(move || {
-        println!("Ctrl+C received, removing cronjob...");
-        remove_cronjob();
+        println!("Ctrl+C recibido, eliminando cronjob...");
+        remove_specific_cronjob("generate_containers.sh");
         stop_clone.store(true, Ordering::SeqCst);
-    }).expect("Error setting Ctrl+C handler");
+    })
+    .expect("Error al configurar el manejador de Ctrl+C");
 
     while !stop.load(Ordering::SeqCst) {
         // Leer el archivo /proc/sysinfo_201700841 dentro del bucle para obtener datos actualizados
@@ -248,4 +299,5 @@ fn main() {
         // Sleep to avoid excessive CPU usage in the loop
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
+    println!("Servicio terminado.");
 }
