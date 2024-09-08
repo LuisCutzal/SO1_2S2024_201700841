@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
@@ -47,11 +44,8 @@ struct LogProcess {
 
 impl Process {
     fn get_container_id(&self) -> &str {
-        // Imprime la línea de comandos para depuración
-        //println!("Línea de comandos: {}", self.cmd_line);
         let parts: Vec<&str> = self.cmd_line.split_whitespace().collect();
         if let Some(last_part) = parts.last() {
-            // Verifica si el último fragmento es un ID de contenedor válido
             if last_part.len() == 64 { // Asumiendo que el ID tiene 64 caracteres
                 return last_part;
             }
@@ -66,6 +60,8 @@ impl Ord for Process {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.cpu_usage.partial_cmp(&other.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| self.memory_usage.partial_cmp(&other.memory_usage).unwrap_or(std::cmp::Ordering::Equal))
+            .then_with(|| self.rss_kb.cmp(&other.rss_kb))
+            .then_with(|| self.vsz_kb.cmp(&other.vsz_kb))
     }
 }
 
@@ -73,6 +69,10 @@ impl PartialOrd for Process {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
+}
+
+fn sort_processes(processes: &mut Vec<Process>) {
+    processes.sort();
 }
 
 fn kill_container(id: &str) -> std::process::Output {
@@ -92,7 +92,7 @@ fn analyzer(system_info: &SystemInfo) {
     let mut log_proc_list: Vec<LogProcess> = Vec::new();
     let mut processes_list: Vec<Process> = system_info.processes.clone();
 
-    processes_list.sort();
+    sort_processes(&mut processes_list);
 
     let (lowest_list, highest_list) = processes_list.split_at(processes_list.len() / 2);
 
@@ -130,7 +130,7 @@ fn analyzer(system_info: &SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
-                vsz_k: process.rss_kb,
+                vsz_k: process.vsz_kb,
                 rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage,
@@ -147,7 +147,7 @@ fn analyzer(system_info: &SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
-                vsz_k: process.rss_kb,
+                vsz_k: process.vsz_kb,
                 rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage
@@ -173,13 +173,6 @@ fn analyzer(system_info: &SystemInfo) {
     println!("------------------------------");
 }
 
-fn read_proc_file(file_name: &str) -> io::Result<String> {
-    let path = Path::new("/proc").join(file_name);
-    let mut file = File::open(path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    Ok(content)
-}
 
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
     let system_info: SystemInfo = serde_json::from_str(json_str)?;
