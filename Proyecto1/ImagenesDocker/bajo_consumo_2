@@ -1,5 +1,5 @@
-# Dockerfile para otro contenedor de bajo consumo de recursos
-FROM ubuntu:latest
+# Dockerfile para extremadamente bajo consumo de CPU y RAM usando BusyBox
+FROM busybox:latest
 
-# Comando para bajo consumo indefinido
-CMD ["sh", "-c", "echo 'Running lightweight process' && while true; do sleep 60; done"]
+# Comando para no hacer nada y minimizar el uso de recursos sin generar logs
+CMD ["sh", "-c", "while true; do sleep 1 > /dev/null 2>&1; done"]

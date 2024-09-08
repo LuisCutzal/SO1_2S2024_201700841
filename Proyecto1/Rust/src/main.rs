@@ -3,6 +3,8 @@ use std::process::Command;
 use ctrlc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tokio;
+use reqwest::Client;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SystemInfo {
@@ -39,7 +41,7 @@ struct LogProcess {
     pid: u32,
     container_id: String,
     name: String,
-    vsz_k: u64,
+    vsz_kb: u64,
     rss_kb: u64,
     memory_usage: f64,
     cpu_usage: f64,
@@ -78,115 +80,101 @@ fn sort_processes(processes: &mut Vec<Process>) {
     processes.sort();
 }
 
-fn kill_container(id: &str) -> std::process::Output {
+fn kill_container(container_id: &str) {
     let output = Command::new("sudo")
         .arg("docker")
         .arg("stop")
-        .arg(id)
+        .arg(container_id)
         .output()
-        .expect("failed to execute process");
+        .expect("Error al ejecutar el comando docker");
 
-    println!("Matando contenedor con id: {}", id);
-
-    output
+    if output.status.success() {
+        println!("Contenedor eliminado exitosamente: {}", container_id);
+    } else {
+        eprintln!(
+            "Error al eliminar el contenedor {}: {}",
+            container_id,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
-fn remove_cronjob() {
+fn remove_specific_cronjob(script_path: &str) {
     let output = Command::new("crontab")
-        .arg("-r")
+        .arg("-l")
         .output()
-        .expect("failed to execute process");
+        .expect("Failed to list cronjobs");
 
     if !output.status.success() {
-        eprintln!("Error al eliminar el cronjob: {:?}", output.status);
+        eprintln!("Error al listar cronjobs: {:?}", output.status);
+        return;
+    }
+
+    let cronjobs = String::from_utf8_lossy(&output.stdout);
+    let filtered_cronjobs: Vec<&str> = cronjobs
+        .lines()
+        .filter(|line| !line.contains(script_path))
+        .collect();
+
+    if filtered_cronjobs.len() == cronjobs.lines().count() {
+        println!("No se encontró ningún cronjob relacionado con {}", script_path);
+        return;
+    }
+
+    let new_cronjobs = filtered_cronjobs.join("\n");
+    let mut apply_cron = Command::new("crontab")
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to update cronjobs");
+
+    if let Some(ref mut stdin) = apply_cron.stdin {
+        use std::io::Write;
+        stdin
+            .write_all(new_cronjobs.as_bytes())
+            .expect("Failed to write to cron stdin");
+    }
+
+    let status = apply_cron.wait().expect("Failed to wait on cronjob process");
+    if status.success() {
+        println!("Cronjob relacionado con {} eliminado exitosamente.", script_path);
     } else {
-        println!("Cronjob eliminado exitosamente.");
+        eprintln!("Error al eliminar el cronjob: {:?}", status);
     }
 }
 
-fn analyzer(system_info: &SystemInfo) {
-    let mut log_proc_list: Vec<LogProcess> = Vec::new();
-    let mut processes_list: Vec<Process> = system_info.processes.clone();
+async fn send_process_logs(client: &Client, log_process_list: &[LogProcess]) -> Result<(), Box<dyn std::error::Error>> {
+    for log_process in log_process_list {
+        let response = client.post("http://localhost:8000/log/process")
+            .json(log_process)
+            .send()
+            .await?;
 
-    sort_processes(&mut processes_list);
-
-    let (lowest_list, highest_list) = processes_list.split_at(processes_list.len() / 2);
-
-    println!("Bajo consumo");
-    for process in lowest_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}", 
-        process.pid, 
-        process.name, 
-        process.get_container_id(), 
-        process.vsz_kb,
-        process.rss_kb,
-        process.memory_usage, 
-        process.cpu_usage);
-    }
-
-    println!("------------------------------");
-
-    println!("Alto consumo");
-    for process in highest_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}", 
-        process.pid, 
-        process.name,
-        process.get_container_id(),
-        process.vsz_kb,
-        process.rss_kb,
-        process.memory_usage, 
-        process.cpu_usage);
-    }
-
-    println!("------------------------------");
-
-    if lowest_list.len() > 3 {
-        for process in lowest_list.iter().skip(3) {
-            let log_process = LogProcess {
-                pid: process.pid,
-                container_id: process.get_container_id().to_string(),
-                name: process.name.clone(),
-                vsz_k: process.vsz_kb,
-                rss_kb: process.rss_kb,
-                memory_usage: process.memory_usage,
-                cpu_usage: process.cpu_usage,
-            };
-
-            log_proc_list.push(log_process.clone());
-            let _output = kill_container(&process.get_container_id());
-        }
-    } 
-
-    if highest_list.len() > 2 {
-        for process in highest_list.iter().take(highest_list.len() - 2) {
-            let log_process = LogProcess {
-                pid: process.pid,
-                container_id: process.get_container_id().to_string(),
-                name: process.name.clone(),
-                vsz_k: process.vsz_kb,
-                rss_kb: process.rss_kb,
-                memory_usage: process.memory_usage,
-                cpu_usage: process.cpu_usage
-            };
-
-            log_proc_list.push(log_process.clone());
-            let _output = kill_container(&process.get_container_id());
+        let status = response.status();
+        
+        if status.is_success() {
+            println!("Process log sent successfully: {:?}", log_process);
+        } else {
+            // Leer el cuerpo de la respuesta después de obtener el estado
+            let response_text = response.text().await?;
+            eprintln!("Failed to send process log. Status: {}, Response: {}", status, response_text);
         }
     }
+    Ok(())
+}
 
-    println!("Contenedores matados");
-    for process in log_proc_list {
-        println!("PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {} ",
-        process.pid,
-        process.name,
-        process.container_id,
-        process.vsz_k,
-        process.rss_kb,
-        process.memory_usage,
-        process.cpu_usage);
+fn get_system_info() -> SystemInfo {
+    let output = Command::new("cat")
+        .arg("/proc/sysinfo_201700841")
+        .output()
+        .expect("Failed to execute command");
+
+    if !output.status.success() {
+        panic!("Error al leer el archivo de sistema");
     }
 
-    println!("------------------------------");
+    let json_str = String::from_utf8_lossy(&output.stdout);
+    parse_proc_to_struct(&json_str).expect("Failed to parse JSON")
 }
 
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
@@ -194,50 +182,155 @@ fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error>
     Ok(system_info)
 }
 
-fn main() {
-    let stop = Arc::new(AtomicBool::new(false));
-    let stop_clone = stop.clone();
+async fn analyzer(system_info: &SystemInfo, client: &Client) {
+    let mut log_proc_list: Vec<LogProcess> = Vec::new();
+    
+    let mut processes_list: Vec<Process> = system_info.processes.clone();
+    sort_processes(&mut processes_list);
 
-    // Handle Ctrl+C
-    ctrlc::set_handler(move || {
-        println!("Ctrl+C received, removing cronjob...");
-        remove_cronjob();
-        stop_clone.store(true, Ordering::SeqCst);
-    }).expect("Error setting Ctrl+C handler");
+    println!("--- Lista completa de contenedores (ordenada) ---");
+    for process in &processes_list {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
+    }
 
-    let output = Command::new("cat")
-        .arg("/proc/sysinfo_201700841")
-        .output()
-        .expect("Failed to execute command");
+    println!("------------------------------");
 
-    if !output.status.success() {
-        eprintln!("Error executing command: {:?}", output.status);
+    for process in &processes_list {
+        let log_process = LogProcess {
+            pid: process.pid,
+            container_id: process.get_container_id().to_string(),
+            name: process.name.clone(),
+            vsz_kb: process.vsz_kb,
+            rss_kb: process.rss_kb,
+            memory_usage: process.memory_usage,
+            cpu_usage: process.cpu_usage,
+        };
+
+        log_proc_list.push(log_process);
+    }
+
+    println!("------------------------------");
+
+    println!("--- Contenedores enviados ---");
+    for log_process in &log_proc_list {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            log_process.pid,
+            log_process.name,
+            log_process.container_id,
+            log_process.vsz_kb,
+            log_process.rss_kb,
+            log_process.memory_usage,
+            log_process.cpu_usage
+        );
+    }
+
+    println!("------------------------------");
+
+    if let Err(e) = send_process_logs(client, &log_proc_list).await {
+        eprintln!("Error al enviar los logs de procesos: {}", e);
+    }
+
+    println!("------------------------------");
+    let num_processes = processes_list.len();
+    if num_processes < 5 {
+        println!("No hay suficientes contenedores para aplicar análisis de alto/bajo consumo.");
         return;
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let high_consumption = &processes_list[..2];
+    let low_consumption = &processes_list[num_processes - 3..];
+    let to_kill = &processes_list[2..num_processes - 3];
 
-    // Parse the system info once
-    let system_info: Result<SystemInfo, serde_json::Error> = parse_proc_to_struct(&stdout);
-    let system_info = match system_info {
-        Ok(info) => info,
-        Err(e) => {
-            eprintln!("Error parsing system info: {:?}", e);
-            return;
-        }
-    };
+    // Definir los contenedores que no deben ser eliminados
+    let protected_containers: Vec<&str> = vec![
+        "16418f21d19bc31aae8ea1d55b98932d65d3c6ea76604e93d125843329bf914b"
+    ];
 
-    // Print system information once
-    println!("Información del sistema:");
-    println!("Memoria Total (KB): {}", system_info.memoria_total_kb);
-    println!("Memoria Libre (KB): {}", system_info.memoria_libre_kb);
-    println!("Memoria Usada (KB): {}", system_info.memoria_usada_kb);
+    println!("--- Contenedores de bajo consumo ---");
+    for process in low_consumption {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
+    }
+
     println!("------------------------------");
 
-    while !stop.load(Ordering::SeqCst) {
-        analyzer(&system_info);
-
-        // Sleep to avoid excessive CPU usage in the loop
-        std::thread::sleep(std::time::Duration::from_secs(10));
+    println!("--- Contenedores con alto consumo ---");
+    for process in high_consumption {
+        println!(
+            "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+            process.pid,
+            process.name,
+            process.get_container_id(),
+            process.vsz_kb,
+            process.rss_kb,
+            process.memory_usage,
+            process.cpu_usage
+        );
     }
+
+    println!("------------------------------");
+
+    println!("--- Contenedores a eliminar ---");
+    for process in to_kill {
+        let container_id = process.get_container_id();
+        if !protected_containers.contains(&container_id) {
+            println!(
+                "PID: {}, Nombre: {}, ContenedorID: {}, VSZ_KB: {}, RSS_KB: {}, Memory Usage: {}, CPU Usage: {}",
+                process.pid,
+                process.name,
+                container_id,
+                process.vsz_kb,
+                process.rss_kb,
+                process.memory_usage,
+                process.cpu_usage
+            );
+
+            kill_container(container_id);
+        } else {
+            println!(
+                "Contenedor protegido (no eliminado): {}",
+                container_id
+            );
+        }
+    }
+
+    println!("------------------------------");
+}
+
+#[tokio::main]
+async fn main() {
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let stop_flag_clone = stop_flag.clone();
+    ctrlc::set_handler(move || {
+        stop_flag_clone.store(true, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let client = Client::new();
+
+    while !stop_flag.load(Ordering::SeqCst) {
+        let system_info = get_system_info();
+        analyzer(&system_info, &client).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+    }
+
+    println!("Programa detenido por señal Ctrl-C.");
 }
