@@ -47,12 +47,13 @@ struct LogProcess {
 
 impl Process {
     fn get_container_id(&self) -> &str {
+        // Imprime la línea de comandos para depuración
+        //println!("Línea de comandos: {}", self.cmd_line);
         let parts: Vec<&str> = self.cmd_line.split_whitespace().collect();
-        for (i, part) in parts.iter().enumerate() {
-            if *part == "-id" {
-                if let Some(id) = parts.get(i + 1) {
-                    return id;
-                }
+        if let Some(last_part) = parts.last() {
+            // Verifica si el último fragmento es un ID de contenedor válido
+            if last_part.len() == 64 { // Asumiendo que el ID tiene 64 caracteres
+                return last_part;
             }
         }
         "N/A"
