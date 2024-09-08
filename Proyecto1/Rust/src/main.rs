@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
+use ctrlc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SystemInfo {
@@ -47,11 +47,8 @@ struct LogProcess {
 
 impl Process {
     fn get_container_id(&self) -> &str {
-        // Imprime la línea de comandos para depuración
-        //println!("Línea de comandos: {}", self.cmd_line);
         let parts: Vec<&str> = self.cmd_line.split_whitespace().collect();
         if let Some(last_part) = parts.last() {
-            // Verifica si el último fragmento es un ID de contenedor válido
             if last_part.len() == 64 { // Asumiendo que el ID tiene 64 caracteres
                 return last_part;
             }
@@ -66,6 +63,8 @@ impl Ord for Process {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.cpu_usage.partial_cmp(&other.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| self.memory_usage.partial_cmp(&other.memory_usage).unwrap_or(std::cmp::Ordering::Equal))
+            .then_with(|| self.rss_kb.cmp(&other.rss_kb))
+            .then_with(|| self.vsz_kb.cmp(&other.vsz_kb))
     }
 }
 
@@ -73,6 +72,10 @@ impl PartialOrd for Process {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
+}
+
+fn sort_processes(processes: &mut Vec<Process>) {
+    processes.sort();
 }
 
 fn kill_container(id: &str) -> std::process::Output {
@@ -88,11 +91,24 @@ fn kill_container(id: &str) -> std::process::Output {
     output
 }
 
+fn remove_cronjob() {
+    let output = Command::new("crontab")
+        .arg("-r")
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        eprintln!("Error al eliminar el cronjob: {:?}", output.status);
+    } else {
+        println!("Cronjob eliminado exitosamente.");
+    }
+}
+
 fn analyzer(system_info: &SystemInfo) {
     let mut log_proc_list: Vec<LogProcess> = Vec::new();
     let mut processes_list: Vec<Process> = system_info.processes.clone();
 
-    processes_list.sort();
+    sort_processes(&mut processes_list);
 
     let (lowest_list, highest_list) = processes_list.split_at(processes_list.len() / 2);
 
@@ -130,7 +146,7 @@ fn analyzer(system_info: &SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
-                vsz_k: process.rss_kb,
+                vsz_k: process.vsz_kb,
                 rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage,
@@ -147,7 +163,7 @@ fn analyzer(system_info: &SystemInfo) {
                 pid: process.pid,
                 container_id: process.get_container_id().to_string(),
                 name: process.name.clone(),
-                vsz_k: process.rss_kb,
+                vsz_k: process.vsz_kb,
                 rss_kb: process.rss_kb,
                 memory_usage: process.memory_usage,
                 cpu_usage: process.cpu_usage
@@ -173,20 +189,22 @@ fn analyzer(system_info: &SystemInfo) {
     println!("------------------------------");
 }
 
-fn read_proc_file(file_name: &str) -> io::Result<String> {
-    let path = Path::new("/proc").join(file_name);
-    let mut file = File::open(path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    Ok(content)
-}
-
 fn parse_proc_to_struct(json_str: &str) -> Result<SystemInfo, serde_json::Error> {
     let system_info: SystemInfo = serde_json::from_str(json_str)?;
     Ok(system_info)
 }
 
 fn main() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_clone = stop.clone();
+
+    // Handle Ctrl+C
+    ctrlc::set_handler(move || {
+        println!("Ctrl+C received, removing cronjob...");
+        remove_cronjob();
+        stop_clone.store(true, Ordering::SeqCst);
+    }).expect("Error setting Ctrl+C handler");
+
     let output = Command::new("cat")
         .arg("/proc/sysinfo_201700841")
         .output()
@@ -216,7 +234,7 @@ fn main() {
     println!("Memoria Usada (KB): {}", system_info.memoria_usada_kb);
     println!("------------------------------");
 
-    loop {
+    while !stop.load(Ordering::SeqCst) {
         analyzer(&system_info);
 
         // Sleep to avoid excessive CPU usage in the loop
