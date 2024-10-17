@@ -1,17 +1,24 @@
 # Usa una imagen base de Go
-FROM golang:1.20-alpine
+FROM golang:1.20 AS builder
 
 # Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia el archivo Go en el contenedor
+# Copia los archivos go.mod y go.sum
+COPY go.mod ./
+RUN go mod download
+
+# Copia el resto de los archivos de la aplicación
 COPY . .
 
-# Construye la aplicación Go
-RUN go build -o app .
+# Compila la aplicación
+RUN go build -o my-go-api .
 
-# Define el puerto en el que la aplicación se ejecuta
-EXPOSE 8080
+# Usa una imagen más pequeña para ejecutar la aplicación
+FROM gcr.io/distroless/base
 
-# Comando para ejecutar la aplicación
-CMD ["./app"]
+# Copia el binario desde la imagen del builder
+COPY --from=builder /app/my-go-api /my-go-api
+
+# Establece el comando por defecto
+CMD ["/my-go-api"]

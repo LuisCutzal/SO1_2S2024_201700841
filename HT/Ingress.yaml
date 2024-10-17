@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-go-api-ingress
+spec:
+  rules:
+  - host: my-go-api.wide-gamma-437803-j7.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-go-api-service
+            port:
+              number: 80
