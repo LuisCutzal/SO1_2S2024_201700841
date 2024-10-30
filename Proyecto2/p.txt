@@ -1,0 +1,103 @@
+Crear un Clúster en GKE
+
+gcloud container clusters create olympics-cluster \
+  --zone us-central1-a \
+  --num-nodes 3 \
+  --enable-autoscaling \
+  --min-nodes 1 \
+  --max-nodes 10 \
+  --enable-ip-alias \
+  --machine-type e2-standard-4 \
+  --disk-size 25GB \
+  --disk-type pd-standard \
+  --tags allin,allout \
+  --no-enable-network-policy
+
+
+
+Autenticarse en el Clúster
+
+gcloud container clusters get-credentials olympics-cluster --zone us-central1-a
+
+
+
+Crear un Namespace para la Aplicación
+
+kubectl create namespace olympics
+
+kubectl get namespace
+
+Para aplicar estas configuraciones en Kubernetes, puedes ejecutar los comandos
+
+kubectl apply -f go-deployment.yaml
+kubectl apply -f go-service.yaml
+kubectl apply -f rust-deployment.yaml
+kubectl apply -f rust-service.yaml
+kubectl apply -f ingress.yaml
+
+
+
+
+Configurar el Autoscaler Horizontal -> se hace despuesde crear los deployments
+
+kubectl autoscale deployment [DEPLOYMENT_NAME] \
+    --cpu-percent=70 \
+    --min=3 \
+    --max=10 -n olympics
+
+Lo configuraremos más adelante cuando los deployments estén en su lugar, pero aquí está el comando 
+básico que utilizarás cuando llegue el momento.
+Este comando escalará un deployment entre 3 y 10 pods si el uso de CPU promedio en los pods excede el 70%.
+
+
+aun no hago esto
+
+docker build -t gcr.io/wide-gamma-437803-j7/olympics-locust:v1 .
+docker push gcr.io/wide-gamma-437803-j7/olympics-locust:v1
+
+
+kubectl apply -f locust-deployment.yaml
+
+kubectl apply -f locust-service.yaml
+
+despliegue del ingress
+kubectl apply -f ingress.yaml
+
+
+
+eliminar cosas
+Eliminar el Namespace
+kubectl delete namespace olympics
+
+Eliminar el Clúster de GKE
+gcloud container clusters delete olympics-cluster --zone us-central1-a
+
+
+
+
+
+para generar los archivos en la carpeta proto
+
+protoc --go_out=. --go-grpc_out=. student.proto
+
+
+
+listar proyectos
+
+gcloud projects list
+
+
+configurar el proyecto activo
+gcloud config set project proyectosopes1-440100
+
+Verificar la Configuración 
+
+gcloud config list
+
+
+Aplicar archivos uno por uno
+kubectl apply -f goclient.yaml
+kubectl apply -f goserver.yaml
+kubectl apply -f ingress.yaml
+kubectl apply -f namespace.yaml
+kubectl apply -f rustclient.yaml
