@@ -10,10 +10,18 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// var (
+//
+//	kafkaBroker = "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092" // Poner el CLuster IP del servicio Kafka
+//	topic       = "winners"                                                 // Tópico a consumir
+//	redisAddr   = "redis-service.redis:6379"                                // Dirección del servidor Redis
+//	redisClient *redis.Client
+//
+// )
 var (
-	kafkaBroker = "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092" // Poner el CLuster IP del servicio Kafka
-	topic       = "winners"                                                 // Tópico a consumir
-	redisAddr   = "redis-service.redis:6379"                                // Dirección del servidor Redis
+	kafkaBroker = "localhost:9092" // Poner el CLuster IP del servicio Kafka
+	topic       = "winners"        // Tópico a consumir
+	redisAddr   = "localhost:6379" // Dirección del servidor Redis
 	redisClient *redis.Client
 )
 

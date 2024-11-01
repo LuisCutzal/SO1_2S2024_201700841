@@ -1,22 +1,22 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
-  name: winn  # Nombre del tópico "winners"
-  namespace: kafka  # El namespace donde estás desplegando Kafka
+  name: winners #concordar con el archivo ganadores.yaml
+  namespace: kafka
   labels:
-    strimzi.io/cluster: my-cluster  # El cluster de Kafka con el que se relaciona
+    strimzi.io/cluster: my-cluster
 spec:
-  partitions: 1  # Número de particiones
-  replicas: 1    # Número de réplicas
+  partitions: 1
+  replicas: 1
 
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
-  name: loser  # Nombre del tópico "losers"
-  namespace: kafka  # El namespace donde estás desplegando Kafka
+  name: losers #concordar con el archivo perdedores.yaml
+  namespace: kafka
   labels:
-    strimzi.io/cluster: my-cluster  # El cluster de Kafka con el que se relaciona
+    strimzi.io/cluster: my-cluster
 spec:
-  partitions: 1  # Número de particiones
-  replicas: 1    # Número de réplicas
+  partitions: 1
+  replicas: 1

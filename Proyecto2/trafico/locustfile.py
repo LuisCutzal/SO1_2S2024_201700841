@@ -18,7 +18,7 @@ last_names = [
 ]
 students = [{"name": f"{random.choice(first_names)} {random.choice(last_names)}", 
              "age": random.randint(18, 30),
-             "faculty": random.choice(["Ingeniería", "Agronomía"]),
+             "faculty": random.choice(["Ingenieria", "Agronomia"]),
              "discipline": random.randint(1, 3)} for _ in range(10000)]
 
 class UserBehavior(TaskSet):
@@ -26,10 +26,10 @@ class UserBehavior(TaskSet):
     def sennd_data(self):
         student = random.choice(students)
         #para agronomia
-        if student['faculty'] == "Agronomía":
+        if student['faculty'] == "Agronomia":
             self.client.post("http://localhost:8080/Agronomia", data=json.dumps(student), headers={"Content-Type": "application/json"})
             #aqui debo de enviar al servidor de agronomia
-        if student['faculty'] == 'Ingeniería':
+        if student['faculty'] == 'Ingenieria':
             self.client.post("http://localhost:8081/Ingenieria", data=json.dumps(student), headers={"Content-Type": "application/json"})
             #aqui debo de enviar al servidor de ingenieria
 class WebsiteUser(HttpUser):

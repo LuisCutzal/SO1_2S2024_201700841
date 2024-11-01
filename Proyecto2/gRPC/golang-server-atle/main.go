@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	port        = flag.Int("port", 50053, "The server port")
-	kafkaBroker = "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092" // Kafka broker
-	topic       = "winners"                                                 // Tópico por defecto
+	port        = flag.Int("port", 50052, "The server port")
+	kafkaBroker = "localhost:9092" // Kafka broker
+	topic       = "winners"        // Tópico por defecto
 	kafkaWriter *kafka.Writer
 )
 
