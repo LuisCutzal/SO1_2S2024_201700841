@@ -1,46 +1,46 @@
 #!/bin/bash
+set -e  # Detener en caso de error
 
-# Remove all Docker images if they exist
-if [ "$(docker images -q)" ]; then
-    docker rmi -f $(docker images -q)
-else
-    echo "No hay imágenes para eliminar."
-fi
+# Remove all Docker images except specified ones
+docker rmi -f $(docker images -q | grep -v -e "^$(docker images -q wurstmeister/zookeeper)$" -e "^$(docker images -q wurstmeister/kafka)$")
 
 # Variables for the Docker images
-GO_CLIENT_IMAGE="golang-client-grpc"
-RUST_CLIENT_IMAGE="rust-client-grpc"
-GO_SERVER_IMAGE="golang-server-grpc"
+GO_CLIENT_IMAGE="golang-client-grpc" 
+RUST_CLIENT_IMAGE="rust-client-grpc" 
+GO_SNATACION_IMAGE="golang-server-natacion"
+GO_SATLETISMO_IMAGE="golang-server-atletismo"
+GO_SBOXEO_IMAGE="golang-server-boxeo"
+GO_SGANADOR_IMAGE="winn" 
+GO_SPERDEDOR_IMAGE="loser"
+
 DOCKERHUB_USERNAME="cutzalluis"
-TAG="0.1"
+TAG="0.5"
 
-# Build the Docker images
-if [ -d "./gRPC/golang-client" ]; then
-    docker build -t $GO_CLIENT_IMAGE ./gRPC/golang-client
-else
-    echo "El directorio ./gRPC/golang-client no se encontró."
-fi
+# ------------------------------Build the Docker images------------------------------
+docker build -t $GO_CLIENT_IMAGE ./gRPC/golang-client
+docker build -t $RUST_CLIENT_IMAGE ./gRPC/golang-server
+docker build -t $GO_SNATACION_IMAGE ./gRPC/golang-server-nat
+docker build -t $GO_SATLETISMO_IMAGE ./gRPC/golang-server-atle
+docker build -t $GO_SBOXEO_IMAGE ./gRPC/golang-server-box
+docker build -t $GO_SGANADOR_IMAGE ./gRPC/winner
+docker build -t $GO_SPERDEDOR_IMAGE ./gRPC/loser
 
-if [ -d "./gRPC/golang-server" ]; then
-    docker build -t $RUST_CLIENT_IMAGE ./gRPC/golang-server
-else
-    echo "El directorio ./gRPC/golang-server no se encontró."
-fi
+# ------------------------------Tag the Docker images------------------------------
+docker tag $GO_CLIENT_IMAGE "$DOCKERHUB_USERNAME/$GO_CLIENT_IMAGE:$TAG"
+docker tag $RUST_CLIENT_IMAGE "$DOCKERHUB_USERNAME/$RUST_CLIENT_IMAGE:$TAG"
+docker tag $GO_SNATACION_IMAGE "$DOCKERHUB_USERNAME/$GO_SNATACION_IMAGE:$TAG"
+docker tag $GO_SATLETISMO_IMAGE "$DOCKERHUB_USERNAME/$GO_SATLETISMO_IMAGE:$TAG"
+docker tag $GO_SBOXEO_IMAGE "$DOCKERHUB_USERNAME/$GO_SBOXEO_IMAGE:$TAG"
+docker tag $GO_SGANADOR_IMAGE "$DOCKERHUB_USERNAME/$GO_SGANADOR_IMAGE:$TAG"
+docker tag $GO_SPERDEDOR_IMAGE "$DOCKERHUB_USERNAME/$GO_SPERDEDOR_IMAGE:$TAG"
 
-if [ -d "./gRPC/grpc-client" ]; then
-    docker build -t $GO_SERVER_IMAGE ./gRPC/grpc-client
-else
-    echo "El directorio ./gRPC/grpc-client no se encontró."
-fi
+# ------------------------------Push the Docker images to DockerHub------------------------------
+docker push "$DOCKERHUB_USERNAME/$GO_CLIENT_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$RUST_CLIENT_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$GO_SNATACION_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$GO_SATLETISMO_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$GO_SBOXEO_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$GO_SGANADOR_IMAGE:$TAG"
+docker push "$DOCKERHUB_USERNAME/$GO_SPERDEDOR_IMAGE:$TAG"
 
-# Tag the Docker images
-docker tag $GO_CLIENT_IMAGE "$DOCKERHUB_USERNAME/$GO_CLIENT_IMAGE:$TAG" 2>/dev/null
-docker tag $RUST_CLIENT_IMAGE "$DOCKERHUB_USERNAME/$RUST_CLIENT_IMAGE:$TAG" 2>/dev/null
-docker tag $GO_SERVER_IMAGE "$DOCKERHUB_USERNAME/$GO_SERVER_IMAGE:$TAG" 2>/dev/null
-
-# Push the Docker images to DockerHub
-docker push "$DOCKERHUB_USERNAME/$GO_CLIENT_IMAGE:$TAG" 2>/dev/null
-docker push "$DOCKERHUB_USERNAME/$RUST_CLIENT_IMAGE:$TAG" 2>/dev/null
-docker push "$DOCKERHUB_USERNAME/$GO_SERVER_IMAGE:$TAG" 2>/dev/null
-
-echo "Docker images processed successfully."
+echo "Docker images pushed successfully."

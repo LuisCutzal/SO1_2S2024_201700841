@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	pb "go-client/proto"
 	"log"
 	"time"
@@ -13,7 +12,11 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "go-server-service:50051", "the address to connect to")
+	servers = map[int]string{
+		1: "localhost:50051",
+		2: "localhost:50052",
+		3: "localhost:50053",
+	}
 )
 
 type Student struct {
@@ -30,39 +33,39 @@ func sendData(fiberCtx *fiber.Ctx) error {
 			"error": err.Error(),
 		})
 	}
-
-	// Set up a connection to the server.
-	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Verificamos si la disciplina está en el mapa de servidores
+	addr, ok := servers[body.Discipline]
+	if !ok {
+		return fiberCtx.Status(400).JSON(fiber.Map{
+			"error": "discipline debe ser 1, 2 o 3 para enviar al servidor gRPC",
+		})
+	}
+	//ahora pasamos a la conexion de servidores
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("Erro de conexion: %v", err)
 	}
 	defer conn.Close()
 	c := pb.NewStudentClient(conn)
-
-	// Create a channel to receive the response and error
+	// Crear un canal para recibir la respuesta y el error
 	responseChan := make(chan *pb.StudentResponse)
 	errorChan := make(chan error)
 	go func() {
-
-		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		// conectar servidor y obtener su respuesta
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
-
 		r, err := c.GetStudent(ctx, &pb.StudentRequest{
 			Name:       body.Name,
 			Age:        int32(body.Age),
 			Faculty:    body.Faculty,
 			Discipline: pb.Discipline(body.Discipline),
 		})
-
 		if err != nil {
 			errorChan <- err
 			return
 		}
-
 		responseChan <- r
 	}()
-
 	select {
 	case response := <-responseChan:
 		return fiberCtx.JSON(fiber.Map{
@@ -81,7 +84,7 @@ func sendData(fiberCtx *fiber.Ctx) error {
 
 func main() {
 	app := fiber.New()
-	app.Post("/faculty", sendData)
+	app.Post("/Agronomia", sendData)
 
 	err := app.Listen(":8080")
 	if err != nil {

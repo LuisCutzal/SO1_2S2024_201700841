@@ -21,8 +21,10 @@ message StudentResponse{
     bool success = 1;
 }
 
+
 enum Discipline{
-    Natacion = 0;
-    Atletismo = 1;
-    Boxeo = 2;
+    Unspecified = 0;
+    Natacion = 1;
+    Atletismo = 2;
+    Boxeo = 3;
 }

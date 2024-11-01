@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grpc-client-rust
+  name: golang-client-grpc
   namespace: sopes1
 spec:
   selector:
     matchLabels:
-      app: grpc-client-rust
+      app: golang-client-grpc
   template:
     metadata:
       labels:
-        app: grpc-client-rust
+        app: golang-client-grpc
     spec:
       containers:
-      - name: grpc-client-rust
-        image: cutzalluis/rust-client-grpc:0.1
+      - name: golang-client-grpc
+        image: cutzalluis/golang-client-grpc:0.5
         resources:
           limits:
             memory: "128Mi"
@@ -25,13 +25,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rust-client-service
+  name: golang-client-grpc-service #DNS
   namespace: sopes1
 spec:
   selector:
-    app: grpc-client-rust
+    app: golang-client-grpc
   ports:
     - protocol: TCP
-      port: 8080
-      targetPort: 8080
-  type: ClusterIP
+      port: 8080 # Entrada
+      targetPort: 8080 # Salida
+  type: NodePort #ClusterIP

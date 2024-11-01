@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golang-server-atletismo
+  namespace: sopes1
+spec:
+  selector:
+    matchLabels:
+      app: golang-server-atletismo
+  template:
+    metadata:
+      labels:
+        app: golang-server-atletismo
+    spec:
+      containers:
+      - name: golang-server-atletismo
+        image: cutzalluis/golang-server-atletismo:0.5
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "0.1"
+        ports:
+        - containerPort: 50052
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: golang-server-atletismo #DNS
+  namespace: sopes1
+spec:
+  selector:
+    app: golang-server-atletismo
+  ports:
+    - protocol: TCP
+      port: 50052
+      targetPort: 50052
+  type: NodePort #ClusterIP

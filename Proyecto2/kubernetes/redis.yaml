@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: redis  # Namespace donde se desplegará Redis
+spec:
+  replicas: 1  # Número de réplicas de Redis
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:6.2-alpine  # Imagen de Redis
+        ports:
+        - containerPort: 6379  # Puerto por defecto de Redis
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "0.5"
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service  # Nombre del servicio
+  namespace: redis  # Namespace donde se desplegará el servicio
+spec:
+  selector:
+    app: redis  # Debe coincidir con las etiquetas del pod
+  ports:
+  - protocol: TCP
+    port: 6379  # Puerto del servicio
+    targetPort: 6379  # Puerto del contenedor
+  type: NodePort  # Tipo de servicio

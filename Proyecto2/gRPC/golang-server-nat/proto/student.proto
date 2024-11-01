@@ -4,7 +4,7 @@ option go_package = "./;student";
 package student;
 
 //servicios protoc --go_out=. --go-grpc_out=. student.proto
-service Student{
+service Student {
     rpc GetStudent(StudentRequest) returns (StudentResponse);
 }
 
