@@ -11,21 +11,21 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var (
-	servers = map[int]string{
-		1: "http://golang-server-natacion-service:50051",  // Para disciplina 1
-		2: "http://golang-server-atletismo-service:50052", // Para disciplina 2
-		3: "http://golang-server-boxeo-service:50053",     // Para disciplina 3
-	}
-)
-
 // var (
 // 	servers = map[int]string{
-// 		1: "localhost:50051",
-// 		2: "localhost:50052",
-// 		3: "localhost:50053",
+// 		1: "golang-server-natacion-service:50051",  // Para disciplina 1
+// 		2: "golang-server-atletismo-service:50052", // Para disciplina 2
+// 		3: "golang-server-boxeo-service:50053",     // Para disciplina 3
 // 	}
 // )
+
+var (
+	servers = map[int]string{
+		1: "http://localhost:50051", // Para disciplina 1
+		2: "http://localhost:50052", // Para disciplina 2
+		3: "http://localhost:50053", // Para disciplina 3
+	}
+)
 
 type Student struct {
 	Name       string `json:"name"`
@@ -41,6 +41,7 @@ func sendData(fiberCtx *fiber.Ctx) error {
 			"error": err.Error(),
 		})
 	}
+
 	// Verificamos si la disciplina está en el mapa de servidores
 	addr, ok := servers[body.Discipline]
 	if !ok {
@@ -48,19 +49,26 @@ func sendData(fiberCtx *fiber.Ctx) error {
 			"error": "discipline debe ser 1, 2 o 3 para enviar al servidor gRPC",
 		})
 	}
-	//ahora pasamos a la conexion de servidores
+
+	// Conectar al servidor gRPC
 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Erro de conexion: %v", err)
+		log.Printf("Error de conexión: %v", err)
+		return fiberCtx.Status(500).JSON(fiber.Map{
+			"error": "Error de conexión al servidor gRPC",
+		})
 	}
 	defer conn.Close()
+
 	c := pb.NewStudentClient(conn)
+
 	// Crear un canal para recibir la respuesta y el error
 	responseChan := make(chan *pb.StudentResponse)
 	errorChan := make(chan error)
+
 	go func() {
-		// conectar servidor y obtener su respuesta
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		// Conectar servidor y obtener su respuesta
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		r, err := c.GetStudent(ctx, &pb.StudentRequest{
 			Name:       body.Name,
@@ -74,16 +82,18 @@ func sendData(fiberCtx *fiber.Ctx) error {
 		}
 		responseChan <- r
 	}()
+
 	select {
 	case response := <-responseChan:
 		return fiberCtx.JSON(fiber.Map{
 			"message": response.GetSuccess(),
 		})
 	case err := <-errorChan:
+		log.Printf("Error al obtener respuesta del servidor gRPC: %v", err)
 		return fiberCtx.Status(500).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Error al obtener respuesta del servidor gRPC",
 		})
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		return fiberCtx.Status(500).JSON(fiber.Map{
 			"error": "timeout",
 		})

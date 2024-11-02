@@ -14,11 +14,11 @@ GO_SGANADOR_IMAGE="winn"
 GO_SPERDEDOR_IMAGE="loser"
 
 DOCKERHUB_USERNAME="cutzalluis"
-TAG="0.5"
+TAG="0.6"
 
 # ------------------------------Build the Docker images------------------------------
 docker build -t $GO_CLIENT_IMAGE ./gRPC/golang-client
-docker build -t $RUST_CLIENT_IMAGE ./gRPC/golang-server
+docker build -t $RUST_CLIENT_IMAGE ./gRPC/grpc-client
 docker build -t $GO_SNATACION_IMAGE ./gRPC/golang-server-nat
 docker build -t $GO_SATLETISMO_IMAGE ./gRPC/golang-server-atle
 docker build -t $GO_SBOXEO_IMAGE ./gRPC/golang-server-box

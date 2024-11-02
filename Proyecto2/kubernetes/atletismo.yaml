@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: golang-server-atletismo
-        image: cutzalluis/golang-server-atletismo:0.5
+        image: cutzalluis/golang-server-atletismo:0.6
         resources:
           limits:
             memory: "128Mi"

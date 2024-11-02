@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: golang-client-grpc
-        image: cutzalluis/golang-client-grpc:0.5
+        image: cutzalluis/golang-client-grpc:0.6
         resources:
           limits:
             memory: "128Mi"

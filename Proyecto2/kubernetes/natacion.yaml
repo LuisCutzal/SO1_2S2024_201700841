@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: golang-server-natacion
-        image: cutzalluis/golang-server-natacion:0.5
+        image: cutzalluis/golang-server-natacion:0.6
         resources:
           limits:
             memory: "128Mi"

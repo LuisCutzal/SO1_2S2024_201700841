@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: loser
-        image: cutzalluis/loser:0.5
+        image: cutzalluis/loser:0.6
         resources:
           limits:
             memory: "128Mi"
@@ -34,7 +34,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: loser #DNS del servicio
+  name: loser-service #DNS del servicio
   namespace: sopes1
 spec:
   selector:

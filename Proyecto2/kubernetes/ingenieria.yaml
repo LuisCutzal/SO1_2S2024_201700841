@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: rust-client-grpc
-        image: cutzalluis/rust-client-grpc:0.5
+        image: cutzalluis/rust-client-grpc:0.6
         resources:
           limits:
             memory: "128Mi"

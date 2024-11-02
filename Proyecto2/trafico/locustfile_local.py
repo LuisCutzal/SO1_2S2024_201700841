@@ -32,19 +32,17 @@ class UserBehavior(TaskSet):
     @task
     def send_data(self):
         student = random.choice(students)
-        url = "http://34.28.90.174.nip.io"
-        
         # Enviar datos a Agronomía
         if student['faculty'] == "Agronomia":
             print("funciona agro")
-            response = self.client.post(f"{url}/Agronomia", data=json.dumps(student), headers={"Content-Type": "application/json"})
+            response = self.client.post("http://localhost:8080/Agronomia", data=json.dumps(student), headers={"Content-Type": "application/json"})
             if response.status_code != 200:
                 print(f"Error al enviar datos a Agronomía: {response.status_code}")
         
         # Enviar datos a Ingeniería
         elif student['faculty'] == "Ingenieria":
             print("funciona inge")
-            response = self.client.post(f"{url}/Ingenieria", data=json.dumps(student), headers={"Content-Type": "application/json"})
+            response = self.client.post("http://localhost:8081/Ingenieria", data=json.dumps(student), headers={"Content-Type": "application/json"})
             if response.status_code != 200:
                 print(f"Error al enviar datos a Ingeniería: {response.status_code}")
 

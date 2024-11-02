@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: golang-server-boxeo
-        image: cutzalluis/golang-server-boxeo:0.5
+        image: cutzalluis/golang-server-boxeo:0.6
         resources:
           limits:
             memory: "128Mi"

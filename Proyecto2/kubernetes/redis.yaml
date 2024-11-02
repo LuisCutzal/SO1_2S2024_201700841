@@ -36,4 +36,4 @@ spec:
   - protocol: TCP
     port: 6379  # Puerto del servicio
     targetPort: 6379  # Puerto del contenedor
-  type: NodePort  # Tipo de servicio
+  type: LoadBalancer    # Tipo de servicio

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: winn
-        image: cutzalluis/winn:0.5
+        image: cutzalluis/winn:0.6
         resources:
           limits:
             memory: "128Mi"
@@ -34,7 +34,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: winn #DNS del servicio
+  name: winn-service #DNS del servicio
   namespace: sopes1
 spec:
   selector:
