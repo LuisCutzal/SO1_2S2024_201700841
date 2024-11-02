@@ -17,10 +17,17 @@ import (
 
 var (
 	port        = flag.Int("port", 50051, "The server port")
-	kafkaBroker = "localhost:9092" // Kafka broker
-	topic       = "winners"        // Tópico por defecto
+	kafkaBroker = "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092" // Kafka broker
+	topic       = "winners"                                                 // Tópico por defecto
 	kafkaWriter *kafka.Writer
 )
+
+// var (
+// 	port        = flag.Int("port", 50051, "The server port")
+// 	kafkaBroker = "localhost:9092" // Kafka broker
+// 	topic       = "winners"        // Tópico por defecto
+// 	kafkaWriter *kafka.Writer
+// )
 
 // Server is used to implement the gRPC server in the proto library
 type server struct {

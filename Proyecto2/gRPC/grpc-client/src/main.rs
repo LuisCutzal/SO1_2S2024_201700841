@@ -21,10 +21,16 @@ struct StudentData {
 // Mapa de servidores según la disciplina
 
 const SERVERS: [&str; 3] = [
-    "http://localhost:50051", //http://go-server-natacion-service:50051", // Para disciplina 1
-    "http://localhost:50052",//http://go-server-atletismo-service:50052", // Para disciplina 2
-    "http://localhost:50053", //"http://go-server-boxeo-service:50053", // Para disciplina 3
+    "http://golang-server-natacion-service:50051", // Para disciplina 1
+    "http://golang-server-atletismo-service:50052", // Para disciplina 2
+    "http://golang-server-boxeo-service:50053", // Para disciplina 3
 ];
+
+// const SERVERS: [&str; 3] = [
+//     "http://localhost:50051", 
+//     "http://localhost:50052",
+//     "http://localhost:50053", 
+// ];
 
 async fn handle_student(student: web::Json<StudentData>) -> impl Responder {
     // Verificamos si la disciplina está dentro de los límites

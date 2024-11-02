@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: olimpiadas.usac
+    - host: 34.136.165.221.nip.io
       http:
         paths:
           - pathType: Prefix

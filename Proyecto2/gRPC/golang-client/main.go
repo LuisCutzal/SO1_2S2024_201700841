@@ -13,11 +13,19 @@ import (
 
 var (
 	servers = map[int]string{
-		1: "localhost:50051",
-		2: "localhost:50052",
-		3: "localhost:50053",
+		1: "http://golang-server-natacion-service:50051",  // Para disciplina 1
+		2: "http://golang-server-atletismo-service:50052", // Para disciplina 2
+		3: "http://golang-server-boxeo-service:50053",     // Para disciplina 3
 	}
 )
+
+// var (
+// 	servers = map[int]string{
+// 		1: "localhost:50051",
+// 		2: "localhost:50052",
+// 		3: "localhost:50053",
+// 	}
+// )
 
 type Student struct {
 	Name       string `json:"name"`
