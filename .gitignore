@@ -2,3 +2,4 @@ Proyecto1/ModuloKernel/*
 !Proyecto1/ModuloKernel/sysinfo.c
 !Proyecto1/ModuloKernel/Makefile
 .vscode/
+Proyecto2/gRPC/grpc-client/target/*

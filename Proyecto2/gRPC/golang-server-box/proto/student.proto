@@ -1,0 +1,31 @@
+syntax = "proto3";
+option go_package = "./;student";
+
+package student;
+
+//servicios protoc --go_out=. --go-grpc_out=. student.proto
+service Student {
+    rpc GetStudent(StudentRequest) returns (StudentResponse);
+}
+
+
+
+//mensajes
+
+message StudentRequest{
+    string name = 1;
+    int32 age = 2;
+    string faculty = 3;
+    Discipline discipline = 4;
+}
+
+message StudentResponse{
+    bool success = 1;
+}
+
+enum Discipline{
+    Unspecified = 0;
+    Natacion = 1;
+    Atletismo = 2;
+    Boxeo = 3;
+}
